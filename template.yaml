@@ -1,0 +1,12 @@
+heat_template_version: 2018-03-02
+description: Portfolio template
+
+resources:
+  my_instance:
+    type: OS::Nova::Server
+    properties:
+      flavor: gx3.2c3r
+      image: Ubuntu Server 22.04 (Jammy) amd64 20220518
+      key_name: Portfolio-Keypair
+      networks:
+        - network: Portfolio-Network
