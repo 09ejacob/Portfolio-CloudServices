@@ -1,0 +1,47 @@
+name: Update OpenStack Stack
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - template.yaml  # Trigger only when template.yaml is updated
+
+jobs:
+  update-openstack-stack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install OpenStack CLI
+        run: |
+          sudo apt update
+          sudo apt install -y python3-openstackclient
+
+      - name: Authenticate with OpenStack
+        env:
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+        run: echo "Authenticated with OpenStack"
+
+      - name: Update Stack in OpenStack
+        env:
+          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+          OS_USERNAME: ${{ secrets.OS_USERNAME }}
+          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+        run: |
+          openstack stack update --template-file template.yaml Portfolio-Stack
+
