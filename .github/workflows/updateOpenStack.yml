@@ -19,7 +19,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y python3-openstackclient
-          pip install python-heatclient  # Install the Heat client to support stack commands
+          pip install python-heatclient
+          pip install python-openstackclient
 
       - name: Authenticate with OpenStack
         env:

@@ -1,5 +1,5 @@
 heat_template_version: 2018-03-02
-description: Portfolio template - Orchestration list check 5
+description: Portfolio template - Test 6
 
 resources:
   my_instance:
