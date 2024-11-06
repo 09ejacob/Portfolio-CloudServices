@@ -44,6 +44,5 @@ jobs:
           OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
           OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
         run: |
-          openstack stack list  # Lists all stacks to verify Heat service availability
-          openstack stack update --template-file template.yaml Portfolio-Stack  # Update stack command
+          openstack stack update --template template.yaml Portfolio-Stack  # Update stack command
 
