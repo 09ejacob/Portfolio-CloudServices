@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - template.yaml  # Trigger only when template.yaml is updated
+      - template.yaml
 
 jobs:
   update-openstack-stack:
@@ -15,10 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Install OpenStack CLI
+      - name: Install OpenStack CLI and Heat Client
         run: |
           sudo apt update
           sudo apt install -y python3-openstackclient
+          pip install python-heatclient  # Install the Heat client to support stack commands
 
       - name: Authenticate with OpenStack
         env:
@@ -43,5 +44,6 @@ jobs:
           OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
           OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
         run: |
-          openstack orchestration stack list
+          openstack stack list  # Lists all stacks to verify Heat service availability
+          openstack stack update --template-file template.yaml Portfolio-Stack  # Update stack command
 
