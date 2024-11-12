@@ -1,4 +1,4 @@
-name: Update OpenStack Stack
+name: CI/CD Pipeline
 
 on:
   push:
@@ -10,6 +10,15 @@ on:
 jobs:
   update-openstack-stack:
     runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
 
     steps:
       - name: Checkout repository
@@ -23,49 +32,107 @@ jobs:
           pip install python-openstackclient
 
       - name: Authenticate with OpenStack
-        env:
-          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-          OS_USERNAME: ${{ secrets.OS_USERNAME }}
-          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
-          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
         run: echo "Authenticated with OpenStack"
 
       - name: Debug OpenStack Connection
-        env:
-          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
         run: |
           echo "Testing connectivity to OpenStack authentication URL..."
           curl -v $OS_AUTH_URL || echo "Could not reach OpenStack authentication URL"
 
       - name: Test OpenStack Authentication
-        env:
-          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-          OS_USERNAME: ${{ secrets.OS_USERNAME }}
-          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
-          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
         run: |
           echo "Attempting to issue a token..."
           openstack token issue || echo "Failed to authenticate with OpenStack"
 
       - name: Update Stack in OpenStack
-        env:
-          OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-          OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-          OS_USERNAME: ${{ secrets.OS_USERNAME }}
-          OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-          OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-          OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-          OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
-          OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
         run: |
           echo "Updating OpenStack stack..."
           openstack stack update --template template.yaml Portfolio-Stack || echo "Failed to update the stack"
 
+  test-stack:
+    needs: update-openstack-stack
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install OpenStack CLI and Heat Client
+        run: |
+          sudo apt update
+          sudo apt install -y python3-openstackclient
+          pip install python-heatclient
+
+      - name: Authenticate with OpenStack
+        run: echo "Authenticated with OpenStack"
+
+      - name: Instance Status Check
+        run: |
+          openstack server list | grep "ACTIVE" || exit 1
+
+      - name: Resource Limits Test
+        run: |
+          openstack server show Portfolio-Ubuntu-Instance -f json | jq '.flavor' | grep "gx3.2c3r" || exit 1
+
+      - name: Connectivity Test with curl
+        run: |
+          curl -s -I http://10.212.27.244 || exit 1
+
+      - name: Security Group Test
+        run: |
+          openstack security group rule list 3a02cd53-6770-4f12-a5a5-6d5d2393a8f6 || exit 1
+
+      #- name: Port Test
+      #  run: |
+      #    nc -zv 10.212.27.244 22 && echo "Port 22 open" || exit 1
+
+      - name: Service Availability Check
+        run: |
+          curl -I http://10.212.27.244 || exit 1
+
+  deploy-hello-world:
+    runs-on: ubuntu-latest
+    env:
+      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+      OS_USERNAME: ${{ secrets.OS_USERNAME }}
+      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+      OS_INTERFACE: ${{ secrets.OS_INTERFACE }}
+      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Decode and Set up SSH Key
+        run: |
+          echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > temp-key.pem
+          chmod 600 temp-key.pem
+
+      - name: Debug SSH Key Permissions
+        run: |
+          ls -l temp-key.pem
+          file temp-key.pem
+          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@10.212.27.244 "echo 'SSH Key is working'"
+
+      - name: Copy HTML File to Server
+        run: |
+          scp -i temp-key.pem -o StrictHostKeyChecking=no ./index.html ubuntu@10.212.27.244:/tmp/
+
+      - name: Move HTML to Web Directory on Server
+        run: |
+          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@10.212.27.244 "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
+
+      - name: Cleanup SSH Key
+        run: |
+          rm -f temp-key.pem

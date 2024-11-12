@@ -1,5 +1,5 @@
 heat_template_version: 2018-03-02
-description: Portfolio template - Test 9
+description: Portfolio template - Test 10
 
 resources:
   my_instance:
@@ -8,5 +8,6 @@ resources:
       flavor: gx3.2c3r
       image: Ubuntu Server 22.04 (Jammy) amd64 20220518
       key_name: Portfolio-Keypair
+      name: Portfolio-Ubuntu-Instance
       networks:
         - network: Portfolio-Network
