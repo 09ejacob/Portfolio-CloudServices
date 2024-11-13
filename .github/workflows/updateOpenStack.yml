@@ -9,7 +9,7 @@ on:
 
 jobs:
   update-openstack-stack:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
       OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
@@ -51,7 +51,7 @@ jobs:
 
   test-stack:
     needs: update-openstack-stack
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
       OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
@@ -71,8 +71,9 @@ jobs:
           sudo apt install -y python3-openstackclient
           pip install python-heatclient
 
-      - name: Install Netcat
-        run: sudo apt install -y netcat
+      - name: Install Netcat and Apache Benchmark
+        run: |
+          sudo apt install -y netcat apache2-utils
 
       - name: Authenticate with OpenStack
         run: echo "Authenticated with OpenStack"
@@ -101,8 +102,25 @@ jobs:
         run: |
           curl -I http://10.212.27.244 || (echo "Service availability check failed" && exit 1)
 
+      - name: Check Website Content
+        run: |
+          curl -s http://10.212.27.244 | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
+
+      - name: HTTP Status Code Check
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" http://10.212.27.244 | grep 200 || (echo "HTTP status code check failed" && exit 1)
+
+      - name: Apache Response Time Check
+        run: |
+          time curl -s -o /dev/null http://10.212.27.244 || (echo "Response time check failed" && exit 1)
+
+      - name: Basic Load Test
+        run: |
+          ab -n 50 -c 10 http://10.212.27.244/ || (echo "Load test failed" && exit 1)
+
+
   deploy-hello-world:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
       OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
