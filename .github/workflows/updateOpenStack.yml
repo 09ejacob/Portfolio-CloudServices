@@ -9,178 +9,121 @@ on:
       - index.html
       - '.github/workflows/**'
 
+env:
+  OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
+  OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
+  OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
+  OS_USERNAME: ${{ secrets.OS_USERNAME }}
+  OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
+  OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
+  OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
+  OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
+  OS_INTERFACE: public
+  OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+
 jobs:
+  # Job: Setup Environment
+  setup-environment:
+    runs-on: self-hosted
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3-openstackclient python3-venv jq netcat apache2-utils
+          pip install --upgrade pip
+          pip install --upgrade python-openstackclient python-heatclient
+
+  # Job: Update OpenStack Stack
   update-openstack-stack:
     runs-on: self-hosted
-    env:
-      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
-      OS_USERNAME: ${{ secrets.OS_USERNAME }}
-      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
-      OS_INTERFACE: public
-      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
-
+    needs: setup-environment
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Install OpenStack CLI and Heat Client
-        run: |
-          sudo apt update
-          sudo apt install -y python3-openstackclient
-          pip install python-heatclient
-          pip install python-openstackclient
-
-      - name: Authenticate with OpenStack
-        run: echo "Authenticated with OpenStack"
-
-      - name: Debug OpenStack Connection
-        run: |
-          echo "Testing connectivity to OpenStack authentication URL..."
-          curl -v $OS_AUTH_URL || echo "Could not reach OpenStack authentication URL"
-
-      - name: Test OpenStack Authentication
+      - name: Authenticate and Update Stack
         run: |
           echo "Attempting to issue a token..."
-          openstack token issue || echo "Failed to authenticate with OpenStack"
-
-      - name: Update Stack in OpenStack
-        run: |
+          openstack token issue
           echo "Updating OpenStack stack..."
-          openstack stack update --template template.yaml Portfolio-Stack || echo "Failed to update the stack"
+          openstack stack update --template template.yaml Portfolio-Stack
 
-  test-stack:
-    needs: update-openstack-stack
+  # Job: Test OpenStack Stack
+  test-openstack-stack:
     runs-on: self-hosted
-    env:
-      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
-      OS_USERNAME: ${{ secrets.OS_USERNAME }}
-      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
-      OS_INTERFACE: public
-      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
+    needs: update-openstack-stack
     steps:
-      - name: Checkout code
+      - name: Checkout Repository
         uses: actions/checkout@v2
-
-      - name: Install OpenStack CLI and Heat Client
-        run: |
-          sudo apt update
-          sudo apt install -y python3-openstackclient
-          sudo apt install -y jq
-          sudo apt install -y python3 python3-venv
-          python3 -m venv myenv
-          source myenv/bin/activate
-          pip install --upgrade pip
-          pip install python-heatclient
-          pip install python-openstackclient
-
-      - name: Print Environment Variables
-        run: |
-          echo "OS_AUTH_URL: $OS_AUTH_URL"
-          echo "OS_PROJECT_ID: $OS_PROJECT_ID"
-          echo "OS_PROJECT_NAME: $OS_PROJECT_NAME"
-          echo "OS_REGION_NAME: $OS_REGION_NAME"
-          echo "OS_USER_DOMAIN_NAME: $OS_USER_DOMAIN_NAME"
-          echo "OS_PROJECT_DOMAIN_NAME: $OS_PROJECT_DOMAIN_NAME"
-          echo "OS_INTERFACE: $OS_INTERFACE"
-          echo "OS_IDENTITY_API_VERSION: $OS_IDENTITY_API_VERSION"
-
-      - name: Test OpenStack Authentication
-        run: |
-          echo "Attempting to issue a token..."
-          openstack --debug token issue || (echo "Failed to authenticate with OpenStack" && exit 1)
-
-      - name: Install Netcat and Apache Benchmark
-        run: |
-          sudo apt install -y netcat apache2-utils
 
       - name: Instance Status Check
         run: |
-          openstack server list | grep "ACTIVE" || (echo "Instance status check failed" && exit 1)
+          openstack server list --status ACTIVE --name Portfolio-Ubuntu-Instance | grep "Portfolio-Ubuntu-Instance" || (echo "Instance is not active" && exit 1)
 
       - name: Resource Limits Test
         run: |
-          openstack server show Portfolio-Ubuntu-Instance -f json | jq '.flavor' | grep "gx3.2c3r" || (echo "Resource limits check failed" && exit 1)
-
-      - name: Connectivity Test with curl
-        run: |
-          curl -s -I http://10.212.27.244 || (echo "Connectivity test failed" && exit 1)
+          openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.2c3r" || (echo "Resource limits check failed" && exit 1)
 
       - name: Security Group Test
         run: |
-          openstack security group rule list 3a02cd53-6770-4f12-a5a5-6d5d2393a8f6 || (echo "Security group test failed" && exit 1)
+          openstack security group list -f value -c ID | xargs -I {} openstack security group rule list {} || (echo "Security group test failed" && exit 1)
 
-      - name: Port Test
-        run: |
-          nc -zv 10.212.27.244 22 && echo "Port 22 open" || (echo "Port 22 is not open" && exit 1)
+  # Job: Connectivity and Service Tests
+  connectivity-and-service-tests:
+    runs-on: self-hosted
+    needs: test-openstack-stack
+    steps:
+      - name: Define Server IP
+        run: echo "SERVER_IP=10.212.27.244" >> $GITHUB_ENV
 
-      - name: Service Availability Check
+      - name: Port 22 Test
         run: |
-          curl -I http://10.212.27.244 || (echo "Service availability check failed" && exit 1)
+          nc -zv $SERVER_IP 22 || (echo "Port 22 is not open" && exit 1)
+
+      - name: HTTP Connectivity Test
+        run: |
+          curl -s -I http://$SERVER_IP || (echo "HTTP connectivity test failed" && exit 1)
 
       - name: Check Website Content
         run: |
-          curl -s http://10.212.27.244 | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
+          curl -s http://$SERVER_IP | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
 
       - name: HTTP Status Code Check
         run: |
-          curl -s -o /dev/null -w "%{http_code}" http://10.212.27.244 | grep 200 || (echo "HTTP status code check failed" && exit 1)
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$SERVER_IP)
+          [ "$STATUS_CODE" -eq 200 ] || (echo "Expected HTTP status 200, got $STATUS_CODE" && exit 1)
 
-      - name: Apache Response Time Check
+      - name: Response Time Check
         run: |
-          time curl -s -o /dev/null http://10.212.27.244 || (echo "Response time check failed" && exit 1)
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}\n" http://$SERVER_IP)
+          MAX_TIME=2.0
+          (( $(echo "$RESPONSE_TIME < $MAX_TIME" | bc -l) )) || (echo "Response time $RESPONSE_TIME exceeds $MAX_TIME seconds" && exit 1)
 
       - name: Basic Load Test
         run: |
-          ab -n 50 -c 10 http://10.212.27.244/ || (echo "Load test failed" && exit 1)
+          ab -n 50 -c 10 http://$SERVER_IP/ || (echo "Load test failed" && exit 1)
 
-
-  deploy-hello-world:
+  # Job: Deploy HTML Content
+  deploy-html-content:
     runs-on: self-hosted
-    env:
-      OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
-      OS_PROJECT_ID: ${{ secrets.OS_PROJECT_ID }}
-      OS_PROJECT_NAME: ${{ secrets.OS_PROJECT_NAME }}
-      OS_USERNAME: ${{ secrets.OS_USERNAME }}
-      OS_PASSWORD: ${{ secrets.OS_PASSWORD }}
-      OS_REGION_NAME: ${{ secrets.OS_REGION_NAME }}
-      OS_USER_DOMAIN_NAME: ${{ secrets.OS_USER_DOMAIN_NAME }}
-      OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
-      OS_INTERFACE: public
-      OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
-
+    needs: connectivity-and-service-tests
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v2
 
-      - name: Decode and Set up SSH Key
+      - name: Decode SSH Key
         run: |
           echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > temp-key.pem
           chmod 600 temp-key.pem
 
-      - name: Debug SSH Key Permissions
-        run: |
-          ls -l temp-key.pem
-          file temp-key.pem
-          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@10.212.27.244 "echo 'SSH Key is working'"
-
       - name: Copy HTML File to Server
         run: |
-          scp -i temp-key.pem -o StrictHostKeyChecking=no ./index.html ubuntu@10.212.27.244:/tmp/
+          scp -i temp-key.pem -o StrictHostKeyChecking=no ./index.html ubuntu@$SERVER_IP:/tmp/
 
-      - name: Move HTML to Web Directory on Server
+      - name: Deploy HTML to Web Directory
         run: |
-          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@10.212.27.244 "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
+          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@$SERVER_IP "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
 
       - name: Cleanup SSH Key
-        run: |
-          rm -f temp-key.pem
+        run: rm -f temp-key.pem
+
