@@ -71,6 +71,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y python3-openstackclient
+          sudo apt install -y jq
           sudo apt install -y python3 python3-venv
           python3 -m venv myenv
           source myenv/bin/activate
@@ -84,6 +85,14 @@ jobs:
 
       - name: Authenticate with OpenStack
         run: echo "Authenticated with OpenStack"
+
+      - name: List Service Catalog for Debugging
+        run: |
+          openstack catalog list || (echo "Failed to retrieve service catalog" && exit 1)
+
+      - name: Instance Status Check
+        run: |
+          openstack server list | grep "ACTIVE" || (echo "Instance status check failed" && exit 1)
 
       - name: Resource Limits Test
         run: |
