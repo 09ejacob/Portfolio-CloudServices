@@ -72,41 +72,54 @@ jobs:
   connectivity-and-service-tests:
     runs-on: self-hosted
     needs: test-openstack-stack
+    outputs:
+      server_ip: ${{ steps.get_ip.outputs.server_ip }}
     steps:
-      - name: Define Server IP
-        run: echo "SERVER_IP=10.212.27.244" >> $GITHUB_ENV
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Get Server IP
+        id: get_ip
+        run: |
+          SERVER_IP=$(openstack server show Portfolio-Ubuntu-Instance -f value -c addresses | awk -F'=' '{print $2}' | tr -d ' ')
+          echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
+
+      - name: Debug SERVER_IP
+        run: echo "SERVER_IP is ${{ steps.get_ip.outputs.server_ip }}"
 
       - name: Port 22 Test
         run: |
-          nc -zv $SERVER_IP 22 || (echo "Port 22 is not open" && exit 1)
+          nc -zv ${{ steps.get_ip.outputs.server_ip }} 22 || (echo "Port 22 is not open" && exit 1)
 
       - name: HTTP Connectivity Test
         run: |
-          curl -s -I http://$SERVER_IP || (echo "HTTP connectivity test failed" && exit 1)
+          curl -s -I http://${{ steps.get_ip.outputs.server_ip }} || (echo "HTTP connectivity test failed" && exit 1)
 
       - name: Check Website Content
         run: |
-          curl -s http://$SERVER_IP | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
+          curl -s http://${{ steps.get_ip.outputs.server_ip }} | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
 
       - name: HTTP Status Code Check
         run: |
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$SERVER_IP)
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ steps.get_ip.outputs.server_ip }})
           [ "$STATUS_CODE" -eq 200 ] || (echo "Expected HTTP status 200, got $STATUS_CODE" && exit 1)
 
       - name: Response Time Check
         run: |
-          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}\n" http://$SERVER_IP)
+          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}\n" http://${{ steps.get_ip.outputs.server_ip }})
           MAX_TIME=2.0
           (( $(echo "$RESPONSE_TIME < $MAX_TIME" | bc -l) )) || (echo "Response time $RESPONSE_TIME exceeds $MAX_TIME seconds" && exit 1)
 
       - name: Basic Load Test
         run: |
-          ab -n 50 -c 10 http://$SERVER_IP/ || (echo "Load test failed" && exit 1)
+          ab -n 50 -c 10 http://${{ steps.get_ip.outputs.server_ip }}/ || (echo "Load test failed" && exit 1)
 
   # Job: Deploy HTML Content
   deploy-html-content:
     runs-on: self-hosted
     needs: connectivity-and-service-tests
+    env:
+      SERVER_IP: ${{ needs.connectivity-and-service-tests.outputs.server_ip }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -115,6 +128,9 @@ jobs:
         run: |
           echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > temp-key.pem
           chmod 600 temp-key.pem
+
+      - name: Debug SERVER_IP
+        run: echo "SERVER_IP is $SERVER_IP"
 
       - name: Copy HTML File to Server
         run: |
@@ -126,4 +142,3 @@ jobs:
 
       - name: Cleanup SSH Key
         run: rm -f temp-key.pem
-
