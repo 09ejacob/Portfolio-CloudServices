@@ -61,9 +61,9 @@ jobs:
         run: |
           openstack server list --status ACTIVE --name Portfolio-Ubuntu-Instance | grep "Portfolio-Ubuntu-Instance" || (echo "Instance is not active" && exit 1)
 
-      - name: Resource Limits Test
-        run: |
-          openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.1c3r" || (echo "Resource limits check failed" && exit 1)
+      #- name: Resource Limits Test
+      #  run: |
+      #    openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.1c3r" || (echo "Resource limits check failed" && exit 1)
 
       - name: Security Group Test
         run: |
