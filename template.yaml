@@ -1,5 +1,5 @@
 heat_template_version: 2018-03-02
-description: Portfolio template
+description: Portfolio template - github test
 
 resources:
   my_instance:
