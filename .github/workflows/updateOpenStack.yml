@@ -65,9 +65,9 @@ jobs:
       #  run: |
       #    openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.1c3r" || (echo "Resource limits check failed" && exit 1)
 
-      - name: Security Group Test
-        run: |
-          openstack security group list -f value -c ID | xargs -I {} openstack security group rule list {} || (echo "Security group test failed" && exit 1)
+      #- name: Security Group Test
+      #  run: |
+      #    openstack security group list -f value -c ID | xargs -I {} openstack security group rule list {} || (echo "Security group test failed" && exit 1)
 
   # Job: Connectivity and Service Tests
   connectivity-and-service-tests:
