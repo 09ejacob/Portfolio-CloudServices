@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - template.yaml
+      - index.html
+      - '.github/workflows/**'
 
 jobs:
   update-openstack-stack:
