@@ -81,25 +81,6 @@ jobs:
       - name: Authenticate with OpenStack
         run: echo "Authenticated with OpenStack"
 
-      - name: Print Environment Variables
-        run: |
-          echo "OS_AUTH_URL: $OS_AUTH_URL"
-          echo "OS_PROJECT_ID: $OS_PROJECT_ID"
-          echo "OS_USERNAME: $OS_USERNAME"
-          echo "OS_REGION_NAME: $OS_REGION_NAME"
-          echo "OS_USER_DOMAIN_NAME: $OS_USER_DOMAIN_NAME"
-          echo "OS_INTERFACE: $OS_INTERFACE"
-          echo "OS_IDENTITY_API_VERSION: $OS_IDENTITY_API_VERSION"
-
-
-      - name: List Service Catalog for Debugging
-        run: |
-          openstack catalog list || (echo "Failed to retrieve service catalog" && exit 1)
-
-      - name: Instance Status Check
-        run: |
-          openstack server list | grep "ACTIVE" || (echo "Instance status check failed" && exit 1)
-
       - name: Resource Limits Test
         run: |
           openstack server show Portfolio-Ubuntu-Instance -f json | jq '.flavor' | grep "gx3.2c3r" || (echo "Resource limits check failed" && exit 1)
