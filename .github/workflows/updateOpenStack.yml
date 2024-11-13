@@ -70,6 +70,7 @@ jobs:
           sudo apt update
           sudo apt install -y python3-openstackclient
           pip install python-heatclient
+          pip install python-openstackclient
 
       - name: Install Netcat and Apache Benchmark
         run: |
@@ -77,6 +78,10 @@ jobs:
 
       - name: Authenticate with OpenStack
         run: echo "Authenticated with OpenStack"
+
+      - name: List Service Catalog for Debugging
+        run: |
+          openstack catalog list || (echo "Failed to retrieve service catalog" && exit 1)
 
       - name: Instance Status Check
         run: |
