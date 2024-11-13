@@ -81,8 +81,18 @@ jobs:
       - name: Get Server IP
         id: get_ip
         run: |
-          SERVER_IP=$(openstack server show Portfolio-Ubuntu-Instance -f value -c addresses | awk -F'=' '{print $2}' | tr -d ' ')
+          SERVER_OUTPUT=$(openstack server show Portfolio-Ubuntu-Instance -f value -c addresses)
+          echo "OpenStack Output: $SERVER_OUTPUT"
+          SERVER_IP=$(echo "$SERVER_OUTPUT" | awk -F'=' '{print $2}' | tr -d ' ')
+          echo "Retrieved SERVER_IP: $SERVER_IP"
           echo "server_ip=$SERVER_IP" >> $GITHUB_OUTPUT
+
+      - name: Verify SERVER_IP
+        run: |
+          if [ -z "${{ steps.get_ip.outputs.server_ip }}" ]; then
+            echo "Failed to retrieve SERVER_IP"
+            exit 1
+          fi
 
       - name: Debug SERVER_IP
         run: echo "SERVER_IP is ${{ steps.get_ip.outputs.server_ip }}"
