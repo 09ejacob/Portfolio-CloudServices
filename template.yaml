@@ -5,7 +5,7 @@ resources:
   my_instance:
     type: OS::Nova::Server
     properties:
-      flavor: gx3.2c3r
+      flavor: gx3.1c3r
       image: Ubuntu Server 22.04 (Jammy) amd64 20220518
       key_name: Portfolio-Keypair
       name: Portfolio-Ubuntu-Instance

@@ -63,7 +63,7 @@ jobs:
 
       - name: Resource Limits Test
         run: |
-          openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.2c3r" || (echo "Resource limits check failed" && exit 1)
+          openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.1c3r" || (echo "Resource limits check failed" && exit 1)
 
       - name: Security Group Test
         run: |
