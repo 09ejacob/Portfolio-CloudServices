@@ -77,8 +77,6 @@ jobs:
           cd frontend
           npm test
 
-
-  # Job: Update OpenStack Stack
   # Job: Update OpenStack Stack
   update-openstack-stack:
     runs-on: self-hosted
@@ -103,7 +101,6 @@ jobs:
           echo "Updating OpenStack stack..."
           openstack stack update --template template.yaml Portfolio-Stack
 
-
   # Job: Deploy Backend
   deploy-backend:
     runs-on: self-hosted
@@ -114,7 +111,7 @@ jobs:
 
       - name: Decode SSH Key
         run: |
-          echo "${{ secrets.SSH_KEY_BASE64_BACKEND }}" | base64 -d > temp-backend-key.pem
+          echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > Portfolio-Keypair.pem
           chmod 600 Portfolio-Keypair.pem
 
       - name: Copy Backend Files to Server
@@ -132,6 +129,7 @@ jobs:
       - name: Cleanup SSH Key
         run: rm -f Portfolio-Keypair.pem
 
+
   # Job: Deploy Frontend
   deploy-frontend:
     runs-on: self-hosted
@@ -142,19 +140,20 @@ jobs:
 
       - name: Decode SSH Key
         run: |
-          echo "${{ secrets.SSH_KEY_BASE64_FRONTEND }}" | base64 -d > temp-frontend-key.pem
-          chmod 600 temp-frontend-key.pem
+          echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > Portfolio-Keypair.pem
+          chmod 600 Portfolio-Keypair.pem
 
       - name: Copy Frontend Files to Server
         run: |
-          scp -i temp-frontend-key.pem -o StrictHostKeyChecking=no ./frontend/index.html ubuntu@$FRONTEND_SERVER_IP:/tmp/
+          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ./frontend/index.html ubuntu@$FRONTEND_SERVER_IP:/tmp/
 
       - name: Deploy Frontend
         run: |
-          ssh -i temp-frontend-key.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
+          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
 
       - name: Cleanup SSH Key
-        run: rm -f temp-frontend-key.pem
+        run: rm -f Portfolio-Keypair.pem
+
 
   # Job: Connectivity and Service Tests
   connectivity-and-service-tests:
