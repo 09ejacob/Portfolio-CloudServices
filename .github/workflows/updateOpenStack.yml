@@ -36,9 +36,6 @@ jobs:
           pip install --upgrade python-openstackclient python-heatclient
           sudo apt install -y nodejs npm
 
-      - name: Verify OpenStack CLI
-        run: openstack --version
-
   # Job: Backend Unit Tests
   backend-unit-tests:
     runs-on: ubuntu-latest
@@ -88,6 +85,9 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
+
+      - name: Verify OpenStack CLI
+        run: openstack --version
 
       - name: Authenticate and Update Stack
         run: |
