@@ -9,7 +9,6 @@ on:
       - '.github/workflows/**'
       - 'backend/**'
       - 'frontend/**'
-      - 'frontend/index.html'
 
 env:
   OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
@@ -46,11 +45,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install -r requirements.txt
+
       - name: Run Backend Unit Tests
         run: |
           cd backend
           python3 -m unittest discover -s tests
-
+          
   # Job: Frontend Unit Tests
   frontend-unit-tests:
     runs-on: ubuntu-latest
@@ -143,4 +149,4 @@ jobs:
     steps:
       - name: Port 22 Test on Frontend
         run: |
-          nc -zv $FRONTEND_SERVER_IP 22 || (echo "Port 22 on Frontend is not open" && ex
+          nc -zv $FRONTEND_SERVER_IP 22 || (echo "Port 22 on Frontend is not open" && exit 1)
