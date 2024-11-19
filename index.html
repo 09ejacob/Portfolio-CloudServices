@@ -3,9 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portfolio Website</title>
+    <title>Portfolio Message App</title>
 </head>
 <body>
-    <h1>Test2</h1>
+    <h1>Portfolio Message App</h1>
+    <textarea id="message" placeholder="Write messages here:"></textarea><br>
+    <button id="sendButton">Send</button>
+
+    <h2>Messages:</h2>
+    <ul id="message-list"></ul>
+
+    <script>
+        const backendUrl = 'http://10.212.25.49:5000/messages';
+
+        document.getElementById('sendButton').addEventListener('click', async () => {
+            const message = document.getElementById('message').value;
+
+            if (!message) {
+                alert('No message');
+                return;
+            }
+
+            const response = await fetch(backendUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+
+            if (response.ok) {
+                document.getElementById('message').value = '';
+                loadMessages();
+            } else {
+                alert('Could not send message.');
+            }
+        });
+
+        async function loadMessages() {
+            const response = await fetch(backendUrl);
+            const messages = await response.json();
+
+            const messageList = document.getElementById('message-list');
+            messageList.innerHTML = '';
+
+            messages.forEach(msg => {
+                const li = document.createElement('li');
+                li.textContent = msg;
+                messageList.appendChild(li);
+            });
+        }
+
+        loadMessages();
+    </script>
 </body>
 </html>
