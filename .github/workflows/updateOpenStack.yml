@@ -6,8 +6,10 @@ on:
       - main
     paths:
       - template.yaml
-      - index.html
       - '.github/workflows/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'frontend/index.html'
 
 env:
   OS_AUTH_URL: ${{ secrets.OS_AUTH_URL }}
@@ -20,24 +22,57 @@ env:
   OS_PROJECT_DOMAIN_NAME: ${{ secrets.OS_PROJECT_DOMAIN_NAME }}
   OS_INTERFACE: public
   OS_IDENTITY_API_VERSION: ${{ secrets.OS_IDENTITY_API_VERSION }}
-  SERVER_IP: ${{ secrets.SERVER_IP }}
+  FRONTEND_SERVER_IP: ${{ secrets.FRONTEND_SERVER_IP }}
+  BACKEND_SERVER_IP: ${{ secrets.BACKEND_SERVER_IP }}
 
 jobs:
   # Job: Setup Environment
   setup-environment:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y python3-openstackclient python3-venv jq netcat apache2-utils
+          sudo apt install -y python3 python3-venv jq netcat apache2-utils
           pip install --upgrade pip
           pip install --upgrade python-openstackclient python-heatclient
+          sudo apt install -y nodejs npm
+
+  # Job: Backend Unit Tests
+  backend-unit-tests:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Run Backend Unit Tests
+        run: |
+          cd backend
+          python3 -m unittest discover -s tests
+
+  # Job: Frontend Unit Tests
+  frontend-unit-tests:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Install Node.js Dependencies
+        run: |
+          cd frontend
+          npm install
+
+      - name: Run Frontend Unit Tests
+        run: |
+          cd frontend
+          npm test
 
   # Job: Update OpenStack Stack
   update-openstack-stack:
-    runs-on: self-hosted
-    needs: setup-environment
+    runs-on: ubuntu-latest
+    needs: [backend-unit-tests, frontend-unit-tests]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -49,78 +84,63 @@ jobs:
           echo "Updating OpenStack stack..."
           openstack stack update --template template.yaml Portfolio-Stack
 
-  # Job: Test OpenStack Stack
-  test-openstack-stack:
-    runs-on: self-hosted
+  # Job: Deploy Backend
+  deploy-backend:
+    runs-on: ubuntu-latest
     needs: update-openstack-stack
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-
-      - name: Instance Status Check
-        run: |
-          openstack server list --status ACTIVE --name Portfolio-Ubuntu-Instance | grep "Portfolio-Ubuntu-Instance" || (echo "Instance is not active" && exit 1)
-
-      #- name: Resource Limits Test
-      #  run: |
-      #    openstack server show Portfolio-Ubuntu-Instance -f value -c flavor | grep "gx3.1c3r" || (echo "Resource limits check failed" && exit 1)
-
-      #- name: Security Group Test
-      #  run: |
-      #    openstack security group list -f value -c ID | xargs -I {} openstack security group rule list {} || (echo "Security group test failed" && exit 1)
-
-  # Job: Connectivity and Service Tests
-  connectivity-and-service-tests:
-    runs-on: self-hosted
-    needs: test-openstack-stack
-    steps:
-      - name: Port 22 Test
-        run: |
-          nc -zv $SERVER_IP 22 || (echo "Port 22 is not open" && exit 1)
-
-      - name: HTTP Connectivity Test
-        run: |
-          curl -s -I http://$SERVER_IP || (echo "HTTP connectivity test failed" && exit 1)
-
-      - name: Check Website Content
-        run: |
-          curl -s http://$SERVER_IP | grep "<title>Portfolio Website</title>" || (echo "Content check failed" && exit 1)
-
-      - name: HTTP Status Code Check
-        run: |
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$SERVER_IP)
-          [ "$STATUS_CODE" -eq 200 ] || (echo "Expected HTTP status 200, got $STATUS_CODE" && exit 1)
-
-      - name: Response Time Check
-        run: |
-          RESPONSE_TIME=$(curl -o /dev/null -s -w "%{time_total}\n" http://$SERVER_IP)
-          MAX_TIME=2.0
-          (( $(echo "$RESPONSE_TIME < $MAX_TIME" | bc -l) )) || (echo "Response time $RESPONSE_TIME exceeds $MAX_TIME seconds" && exit 1)
-
-      - name: Basic Load Test
-        run: |
-          ab -n 50 -c 10 http://$SERVER_IP/ || (echo "Load test failed" && exit 1)
-
-  # Job: Deploy HTML Content
-  deploy-html-content:
-    runs-on: self-hosted
-    needs: connectivity-and-service-tests
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
 
       - name: Decode SSH Key
         run: |
-          echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > temp-key.pem
-          chmod 600 temp-key.pem
+          echo "${{ secrets.SSH_KEY_BASE64_BACKEND }}" | base64 -d > temp-backend-key.pem
+          chmod 600 temp-backend-key.pem
 
-      - name: Copy HTML File to Server
+      - name: Copy Backend Files to Server
         run: |
-          scp -i temp-key.pem -o StrictHostKeyChecking=no ./index.html ubuntu@$SERVER_IP:/tmp/
+          scp -i temp-backend-key.pem -o StrictHostKeyChecking=no -r ./backend ubuntu@$BACKEND_SERVER_IP:/tmp/backend
 
-      - name: Deploy HTML to Web Directory
+      - name: Install Backend Dependencies
         run: |
-          ssh -i temp-key.pem -o StrictHostKeyChecking=no ubuntu@$SERVER_IP "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
+          ssh -i temp-backend-key.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "sudo apt update && sudo apt install -y python3 python3-venv && python3 -m venv /tmp/backend/venv && /tmp/backend/venv/bin/pip install -r /tmp/backend/requirements.txt"
+
+      - name: Start Backend
+        run: |
+          ssh -i temp-backend-key.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "nohup /tmp/backend/venv/bin/python3 /tmp/backend/app.py > /tmp/backend/backend.log 2>&1 &"
 
       - name: Cleanup SSH Key
-        run: rm -f temp-key.pem
+        run: rm -f temp-backend-key.pem
+
+  # Job: Deploy Frontend
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Decode SSH Key
+        run: |
+          echo "${{ secrets.SSH_KEY_BASE64_FRONTEND }}" | base64 -d > temp-frontend-key.pem
+          chmod 600 temp-frontend-key.pem
+
+      - name: Copy Frontend Files to Server
+        run: |
+          scp -i temp-frontend-key.pem -o StrictHostKeyChecking=no ./frontend/index.html ubuntu@$FRONTEND_SERVER_IP:/tmp/
+
+      - name: Deploy Frontend
+        run: |
+          ssh -i temp-frontend-key.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "sudo mv /tmp/index.html /var/www/html/ && sudo systemctl restart apache2"
+
+      - name: Cleanup SSH Key
+        run: rm -f temp-frontend-key.pem
+
+  # Job: Connectivity and Service Tests
+  connectivity-and-service-tests:
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend, deploy-backend]
+    steps:
+      - name: Port 22 Test on Frontend
+        run: |
+          nc -zv $FRONTEND_SERVER_IP 22 || (echo "Port 22 on Frontend is not open" && ex
