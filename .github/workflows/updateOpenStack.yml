@@ -25,7 +25,6 @@ env:
   BACKEND_SERVER_IP: ${{ secrets.BACKEND_SERVER_IP }}
 
 jobs:
-  # Job: Setup Environment
   setup-environment:
     runs-on: ubuntu-latest
     steps:
@@ -36,6 +35,9 @@ jobs:
           pip install --upgrade pip
           pip install --upgrade python-openstackclient python-heatclient
           sudo apt install -y nodejs npm
+
+      - name: Verify OpenStack CLI
+        run: openstack --version
 
   # Job: Backend Unit Tests
   backend-unit-tests:
