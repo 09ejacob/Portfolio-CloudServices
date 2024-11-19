@@ -6,7 +6,7 @@
     <title>Portfolio Message App</title>
 </head>
 <body>
-    <h1>Portfolio Message App 2</h1>
+    <h1>Portfolio Message App</h1>
     <textarea id="message" placeholder="Write messages here:"></textarea><br>
     <button id="sendButton">Send</button>
 
@@ -40,8 +40,7 @@
 
         async function loadMessages() {
             const response = await fetch(backendUrl);
-            const data = await response.json();
-            const messages = data.messages;
+            const messages = await response.json();
 
             const messageList = document.getElementById('message-list');
             messageList.innerHTML = '';
@@ -52,7 +51,6 @@
                 messageList.appendChild(li);
             });
         }
-
 
         loadMessages();
     </script>
