@@ -38,26 +38,26 @@ jobs:
           sudo apt install -y nodejs npm
 
   # Job: Backend Unit Tests
-    backend-unit-tests:
-      runs-on: ubuntu-latest
-      needs: setup-environment
-      steps:
-        - name: Checkout Repository
-          uses: actions/checkout@v2
+  backend-unit-tests:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
-        - name: Install Backend Dependencies
-          run: |
-            cd backend
-            python3 -m venv venv
-            source venv/bin/activate
-            pip install flask
-            pip install flask-cors
+      - name: Install Backend Dependencies
+        run: |
+          cd backend
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install flask
+          pip install flask-cors
 
-        - name: Run Backend Unit Tests
-          run: |
-            cd backend
-            source venv/bin/activate
-            python3 -m unittest discover -s tests
+      - name: Run Backend Unit Tests
+        run: |
+          cd backend
+          source venv/bin/activate
+          python3 -m unittest discover -s tests
 
 
   # Job: Frontend Unit Tests
