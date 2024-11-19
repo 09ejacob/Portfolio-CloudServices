@@ -115,22 +115,22 @@ jobs:
       - name: Decode SSH Key
         run: |
           echo "${{ secrets.SSH_KEY_BASE64_BACKEND }}" | base64 -d > temp-backend-key.pem
-          chmod 600 temp-backend-key.pem
+          chmod 600 Portfolio-Keypair.pem
 
       - name: Copy Backend Files to Server
         run: |
-          scp -i temp-backend-key.pem -o StrictHostKeyChecking=no -r ./backend ubuntu@$BACKEND_SERVER_IP:/tmp/backend
+          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no -r ./backend ubuntu@$BACKEND_SERVER_IP:/tmp/backend
 
       - name: Install Backend Dependencies
         run: |
-          ssh -i temp-backend-key.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "sudo apt update && sudo apt install -y python3 python3-venv && python3 -m venv /tmp/backend/venv && /tmp/backend/venv/bin/pip install -r /tmp/backend/requirements.txt"
+          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "sudo apt update && sudo apt install -y python3 python3-venv && python3 -m venv /tmp/backend/venv && /tmp/backend/venv/bin/pip install -r /tmp/backend/requirements.txt"
 
       - name: Start Backend
         run: |
-          ssh -i temp-backend-key.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "nohup /tmp/backend/venv/bin/python3 /tmp/backend/app.py > /tmp/backend/backend.log 2>&1 &"
+          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$BACKEND_SERVER_IP "nohup /tmp/backend/venv/bin/python3 /tmp/backend/app.py > /tmp/backend/backend.log 2>&1 &"
 
       - name: Cleanup SSH Key
-        run: rm -f temp-backend-key.pem
+        run: rm -f Portfolio-Keypair.pem
 
   # Job: Deploy Frontend
   deploy-frontend:
