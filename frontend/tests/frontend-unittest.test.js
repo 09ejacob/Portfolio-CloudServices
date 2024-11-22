@@ -26,4 +26,33 @@ describe('Frontend Functionality', () => {
 
         expect(data.messages).toContain('Test');
     });
+
+    test('UI updates on sending message', async () => {
+        document.body.innerHTML = `
+            <textarea id="message"></textarea>
+            <button id="sendButton">Send</button>
+            <ul id="message-list"></ul>
+        `;
+        
+        const backendUrl = 'http://10.212.25.49:5000/messages';
+    
+        fetch.mockResponseOnce(JSON.stringify({ status: 'success' }));
+        fetch.mockResponseOnce(JSON.stringify({ messages: ['Test'] }));
+    
+        const sendButton = document.getElementById('sendButton');
+        const messageInput = document.getElementById('message');
+        const messageList = document.getElementById('message-list');
+    
+        messageInput.value = 'Test';
+        sendButton.click();
+    
+        await new Promise(process.nextTick);
+    
+        expect(messageInput.value).toBe('');
+    
+        const messages = messageList.querySelectorAll('li');
+        expect(messages.length).toBe(1);
+        expect(messages[0].textContent).toBe('Test');
+    });
+    
 });
