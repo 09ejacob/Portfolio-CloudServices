@@ -25,7 +25,7 @@ env:
   BACKEND_SERVER_IP: ${{ secrets.BACKEND_SERVER_IP }}
 
 jobs:
-    setup-environment:
+  setup-environment:
     runs-on: self-hosted
     steps:
       - name: Install Dependencies
@@ -36,7 +36,6 @@ jobs:
           pip install --upgrade python-openstackclient python-heatclient
           sudo apt install -y nodejs npm
 
-  # Job: Backend Unit Tests
   backend-unit-tests:
     runs-on: self-hosted
     needs: setup-environment
@@ -58,8 +57,6 @@ jobs:
           source venv/bin/activate
           python3 -m unittest discover -s tests
 
-
-  # Job: Frontend Unit Tests
   frontend-unit-tests:
     runs-on: self-hosted
     needs: setup-environment
@@ -73,7 +70,6 @@ jobs:
           npm install
           npm install jest-environment-jsdom --save-dev
 
-  # Job: Update OpenStack Stack
   update-openstack-stack:
     runs-on: self-hosted
     needs: [backend-unit-tests, frontend-unit-tests]
@@ -97,7 +93,6 @@ jobs:
           echo "Updating OpenStack stack..."
           openstack stack update --template template.yaml Portfolio-Stack
 
-  # Job: Deploy Backend
   deploy-backend:
     runs-on: self-hosted
     needs: update-openstack-stack
@@ -125,8 +120,6 @@ jobs:
       - name: Cleanup SSH Key
         run: rm -f Portfolio-Keypair.pem
 
-
-  # Job: Deploy Frontend
   deploy-frontend:
     runs-on: self-hosted
     needs: deploy-backend
@@ -150,8 +143,6 @@ jobs:
       - name: Cleanup SSH Key
         run: rm -f Portfolio-Keypair.pem
 
-
-  # Job: Connectivity and Service Tests
   connectivity-and-service-tests:
     runs-on: self-hosted
     needs: [deploy-frontend, deploy-backend]
