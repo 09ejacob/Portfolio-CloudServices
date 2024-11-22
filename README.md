@@ -7,3 +7,4 @@ The project aims to create an infrastructure delivery pipeline that automates th
 
 I am using OpenStack for a stack which includes a frontend and backend server for hosting a simple concept chat-website. You can write and send messages which will be stored on the backend.
 
+Test
