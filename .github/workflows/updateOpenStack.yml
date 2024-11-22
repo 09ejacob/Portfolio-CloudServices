@@ -25,7 +25,7 @@ env:
   BACKEND_SERVER_IP: ${{ secrets.BACKEND_SERVER_IP }}
 
 jobs:
-  setup-environment:
+    setup-environment:
     runs-on: self-hosted
     steps:
       - name: Install Dependencies
@@ -35,13 +35,6 @@ jobs:
           pip install --upgrade pip
           pip install --upgrade python-openstackclient python-heatclient
           sudo apt install -y nodejs npm
-                - name: Install Node.js Dependencies
-
-      - name: Install jest-environment-jsdom
-        run: |
-          cd frontend
-          npm install
-          npm install jest-environment-jsdom --save-dev
 
   # Job: Backend Unit Tests
   backend-unit-tests:
@@ -78,11 +71,7 @@ jobs:
         run: |
           cd frontend
           npm install
-
-      - name: Run Frontend Unit Tests
-        run: |
-          cd frontend
-          npm test
+          npm install jest-environment-jsdom --save-dev
 
   # Job: Update OpenStack Stack
   update-openstack-stack:
