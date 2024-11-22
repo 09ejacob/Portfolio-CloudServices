@@ -36,7 +36,8 @@ jobs:
           pip install --upgrade python-openstackclient python-heatclient
           sudo apt install -y nodejs npm
                 - name: Install Node.js Dependencies
-                
+
+      - name: Install jest-environment-jsdom
         run: |
           cd frontend
           npm install
