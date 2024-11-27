@@ -58,14 +58,12 @@ describe('Frontend Functionality', () => {
     
         messageInput.value = 'Test';
         sendButton.click();
-    
-        await new Promise(process.nextTick);
+
+        await new Promise((resolve) => setTimeout(resolve, 50)); 
     
         expect(messageInput.value).toBe('');
-    
-        const messages = messageList.querySelectorAll('li');
-        expect(messages.length).toBe(1);
-        expect(messages[0].textContent).toBe('Test');
+        expect(messageList.children.length).toBe(1);
+        expect(messageList.children[0].textContent).toBe('Test');
     });
     
 });
