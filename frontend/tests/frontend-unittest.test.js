@@ -2,10 +2,17 @@ const fetchMock = require('jest-fetch-mock');
 fetchMock.enableMocks();
 
 describe('Frontend Functionality', () => {
+    /**
+     * Reset mock fetch calls before each test
+     */
     beforeEach(() => {
         fetch.resetMocks();
     });
 
+
+    /**
+     * Test send message from frontend to backend
+     */
     test('message to backend', async () => {
         fetch.mockResponseOnce(JSON.stringify({ status: 'success' }));
         const response = await fetch('http://10.212.25.49:5000/messages', {
@@ -19,6 +26,9 @@ describe('Frontend Functionality', () => {
         expect(json.status).toBe('success');
     });
 
+    /**
+     * Test retrieving message from backend
+     */
     test('fetches messages from the backend', async () => {
         fetch.mockResponseOnce(JSON.stringify({ messages: ['Test'] }));
         const response = await fetch('http://10.212.25.49:5000/messages');
@@ -27,6 +37,9 @@ describe('Frontend Functionality', () => {
         expect(data.messages).toContain('Test');
     });
 
+    /**
+     * Test that UI updates properly after sending message
+     */
     test('UI updates on sending message', async () => {
         document.body.innerHTML = `
             <textarea id="message"></textarea>
