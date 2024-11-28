@@ -17,9 +17,8 @@ def test_e2e():
 
     # Test Frontend
     response = requests.get(FRONTEND_URL)
-    print(response.text)
     assert response.status_code == 200, f"Frontend not reachable. Status code: {response.status_code}"
-    #assert "Test E2E message" in response.text, f"Message not displayed on frontend. Frontend returned: {response.text}"
+    assert "<h1>Portfolio Message App" in response.text, "Frontend did not load correctly. Expected title missing."
 
     print("E2E Test Passed")
 
