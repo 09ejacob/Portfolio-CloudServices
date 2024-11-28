@@ -2,45 +2,15 @@ heat_template_version: 2018-03-02
 description: Portfolio template
 
 resources:
-  frontend_security_group:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      name: Frontend-SecurityGroup
-      rules:
-        - protocol: tcp
-          port_range_min: 22
-          port_range_max: 22
-          remote_ip_prefix: 0.0.0.0/0
-        - protocol: tcp
-          port_range_min: 80
-          port_range_max: 80
-          remote_ip_prefix: 0.0.0.0/0 
-
-  backend_security_group:
-    type: OS::Neutron::SecurityGroup
-    properties:
-      name: Backend-SecurityGroup
-      rules:
-        - protocol: tcp
-          port_range_min: 22
-          port_range_max: 22
-          remote_ip_prefix: 0.0.0.0/0
-        - protocol: tcp
-          port_range_min: 5000
-          port_range_max: 5000
-          remote_ip_prefix: 0.0.0.0/0
-
   my_instance:
     type: OS::Nova::Server
     properties:
       flavor: gx3.1c3r
       image: Ubuntu Server 22.04 (Jammy) amd64 20220518
       key_name: Portfolio-Keypair
-      name: Portfolio-Frontend-Instance
+      name: Portfolio-Ubuntu-Instance-1
       networks:
         - network: Portfolio-Network
-      security_groups:
-        - get_resource: frontend_security_group
 
   my_instance_2:
     type: OS::Nova::Server
@@ -48,8 +18,6 @@ resources:
       flavor: gx3.1c3r
       image: Ubuntu Server 22.04 (Jammy) amd64 20220518
       key_name: Portfolio-Keypair
-      name: Portfolio-Backend-Instance
+      name: Portfolio-Ubuntu-Instance-2
       networks:
         - network: Portfolio-Network
-      security_groups:
-        - get_resource: backend_security_group
