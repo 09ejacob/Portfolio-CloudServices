@@ -160,15 +160,9 @@ jobs:
           echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > Portfolio-Keypair.pem
           chmod 600 Portfolio-Keypair.pem
 
-      - name: Cleanup Old Test Files
-        run: |
-          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "
-            rm -f /tmp/frontend/tests/e2e-test.py
-          "
-
       - name: Transfer Correct E2E Test File to Server
         run: |
-          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ./frontend/frontend/tests/e2e-test.py ubuntu@$FRONTEND_SERVER_IP:/tmp/e2e-test.py
+          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ./frontend/tests/e2e-test.py ubuntu@$FRONTEND_SERVER_IP:/tmp/e2e-test.py
 
       - name: Install Python and Dependencies on Frontend Server
         run: |
