@@ -160,27 +160,26 @@ jobs:
           echo "${{ secrets.SSH_KEY_BASE64 }}" | base64 -d > Portfolio-Keypair.pem
           chmod 600 Portfolio-Keypair.pem
 
-      - name: Transfer E2E Test File to Backend Server
+      - name: Transfer Frontend Files (including tests) to Server
         run: |
-          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ./e2e-test.py ubuntu@${{ secrets.BACKEND_SERVER_IP }}:/tmp/
+          scp -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no -r ./frontend ubuntu@$FRONTEND_SERVER_IP:/tmp/frontend
 
-      - name: Install Python and Dependencies on Backend Server
+      - name: Install Python and Dependencies on Frontend Server
         run: |
-          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.BACKEND_SERVER_IP }} "
+          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "
             sudo apt update &&
             sudo apt install -y python3 python3-pip &&
             pip3 install requests
           "
 
-      - name: Run E2E Tests on Backend Server
+      - name: Run E2E Tests on Frontend Server
         run: |
-          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@${{ secrets.BACKEND_SERVER_IP }} "
-            python3 /tmp/e2e-test.py
+          ssh -i Portfolio-Keypair.pem -o StrictHostKeyChecking=no ubuntu@$FRONTEND_SERVER_IP "
+            python3 /tmp/frontend/tests/e2e-test.py
           "
 
       - name: Cleanup SSH Key
         run: rm -f Portfolio-Keypair.pem
-
 
   connectivity-and-service-test:
     runs-on: self-hosted
