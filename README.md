@@ -11,7 +11,7 @@ I am using OpenStack as the cloud platform which includes a backend and frontend
 ### Frontend:
 A simple web based user interface where users can send and view sent messages. The frontend communicates with the backend with HTTP-based REST API calls.
 
-You can access the web application here http://10.212.27.244/ . Note that you also have to be connected to NTNU’s network.
+You can access the web application here http://10.212.26.212/ . Note that you also have to be connected to NTNU’s network.
 
 ### Backend:
 This is a Flask based server that handles API requests, processes data, and stores messages. 
